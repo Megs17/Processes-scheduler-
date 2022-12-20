@@ -1,0 +1,159 @@
+while(1)
+{
+ if((* processdata).arrivaltime!=0 )
+ { 
+	 CPdata=(*processdata);                                              //get processess data with arrival time first thing is done in the loop
+	 (*processdata).arrivaltime=0;
+	 Hprocess=true;
+ }
+ if(Hprocess)
+ { 
+	int idfork=fork();                                                                                //lw feh process gat  b3mlha fork 
+      if(idfork==0)
+	  {      
+		      execl("/home/megz/Desktop/New Folder/code/process.out","process.out",NULL);
+			  
+	  }		 
+	 int shid=shmget(getpid(),4,IPC_CREAT | 0644);
+	int *shpid = (int *)shmat(shid, (void *)0, 0);
+	while((*shpid)!=idfork);                                                                     //b3ml wait 34an execl bte2aa bstnaa l7d mtt3ml w t7ot idbta3ha
+	  push(&headpq1,idfork,CPdata.runningtime);                 //put forkingid in queue bst5dmo fe sharedmemory w signal sending(runningorblocking)
+	  push(&headpq2,CPdata.id,CPdata.runningtime);    //put real id in queue bst5dmo fe pcb array 34an 24el data bta3t process 
+	  struct processtimes obj;                                           //struct used to share data between scheduler and process (first read process takes runningtime=remainingtime && quantum if no put it equal zero && waiting time return from process)
+	  obj.remaining=CPdata.runningtime;                       //i will add another parameter to distinguish between scheduler and process in sending data to check synchronization of time (0)scheduler (1)process 
+	  obj.waiting=0;
+	  obj.quantum=0;
+	  obj.sender=0;
+	int shmepid=shmget(idfork,14,IPC_CREAT | 0644);
+	struct processtimes* Ptimesptr =(struct processtimes*)shmat(shmepid,(void*)0,0); //putting processtimesdata 
+	(*Ptimesptr)=obj;                                                                                 //put runningtime toread it when start;
+	  PCB[CPdata.id-1].state=0;
+      PCB[CPdata.id-1].runningtime=CPdata.runningtime;
+      PCB[CPdata.id-1].remaining=CPdata.runningtime;
+      PCB[CPdata.id-1].execution=0;
+      PCB[CPdata.id-1].waitingtime=0;	    
+	  Hprocess=false;                                                             //pcb
+
+ }                                                                                            
+ 
+ if(!Hprocessonschedule&&!isEmpty(&headpq1))     // lma bdlt conditions zabt 2le bet8eer fe signal yt7t 2awl (Hprocessonschedule)                                                                                
+ {                                                                                  //here send signal to processes to run b4of lw queueme4 fadya & w mfe4 7ad mst5dm scheduler
+	 Hprocessonschedule=true;                                    //b2ol 2n feh process schedule wa5dha
+	 rprocessfid=peek(&headpq1);                                // bgeeb 23la wa7da fe peek bta3 queue
+	 rprocessrid=peek(&headpq2);                                //if state =0 then first run state=2 yb2a blocked w hna ht3ml resume me4 htst5dmfesjf  
+	 kill(rprocessfid,SIGUSR1);
+	 printf( " id of processrunning %d \n",rprocessrid);
+	 int shmepid=shmget(rprocessfid,14,IPC_CREAT | 0644);
+	 struct processtimes* Ptimesptr =(struct processtimes*)shmat(shmepid,(void*)0,0);  
+     while((*Ptimesptr).sender!=1);  //b3ml delay l7d mt2kd 2no 7t data
+	 PCB[rprocessrid-1].state=1;
+	 PCB[rprocessrid-1].waitingtime=(*Ptimesptr).waiting;
+	 PCB[rprocessrid-1].remaining=(*Ptimesptr).remaining;
+	 (*Ptimesptr).sender=0;         //brg3ha zero 2kd 2ne 2stlmt 34an check 2le b3de 
+ }
+
+}
+/////////////////////////////////////////////////////////////////////////
+while(1)
+{ 
+ if((* processdata).arrivaltime!=0 )
+ { 
+	 CPdata=(*processdata);                                              //get processess data with arrival time first thing is done in the loop
+	 (*processdata).arrivaltime=0;
+	 Hprocess=true;
+ }
+
+ if(Hprocess)
+ { 
+	int idfork=fork();                                                                                //lw feh process gat  b3mlha fork 
+      if(idfork==0)
+	  {      
+		      execl("/home/megz/Desktop/New Folder/code/process.out","process.out",NULL);
+			  
+	  }		 
+	 int shid=shmget(getpid(),4,IPC_CREAT | 0644);
+	int *shpid = (int *)shmat(shid, (void *)0, 0);
+	while((*shpid)!=idfork);                                                                     //b3ml wait 34an execl bte2aa bstnaa l7d mtt3ml w t7ot idbta3ha
+	  push(&headpq1,idfork,CPdata.priority);                 //put forkingid in queue bst5dmo fe sharedmemory w signal sending(runningorblocking)
+	  push(&headpq2,CPdata.id,CPdata.priority);    //put real id in queue bst5dmo fe pcb array 34an 24el data bta3t process 
+	  struct processtimes obj;                                           //struct used to share data between scheduler and process (first read process takes runningtime=remainingtime && quantum if no put it equal zero && waiting time return from process)
+	  obj.remaining=CPdata.runningtime;                       //i will add another parameter to distinguish between scheduler and process in sending data to check synchronization of time (0)scheduler (1)process 
+	  obj.waiting=0;
+	  obj.quantum=0;
+	  obj.sender=0;
+	int shmepid=shmget(idfork,14,IPC_CREAT | 0644);
+	struct processtimes* Ptimesptr =(struct processtimes*)shmat(shmepid,(void*)0,0); //putting processtimesdata 
+	(*Ptimesptr)=obj;                                                                                 //put runningtime toread it when start;
+	  PCB[CPdata.id-1].state=0;
+      PCB[CPdata.id-1].runningtime=CPdata.runningtime;
+      PCB[CPdata.id-1].remaining=CPdata.runningtime;
+      PCB[CPdata.id-1].execution=0;
+      PCB[CPdata.id-1].waitingtime=0;	    
+	  Hprocess=false;                                                             //pcb 
+} 
+ 
+if(rprocessfid!=peek(&headpq1)&&Hprocessonschedule)                //blocking y7sl lw queue feha haga 23la mn 2le 48ala dlw2t w feh process on schedule
+{
+	 kill(rprocessfid,SIGUSR2);
+	  int shmepid=shmget(rprocessfid,14,IPC_CREAT | 0644);
+	 struct processtimes* Ptimesptr =(struct processtimes*)shmat(shmepid,(void*)0,0); 
+	 while((*Ptimesptr).sender!=1); 
+      if((*Ptimesptr).remaining>0)                                               //ana 5aef ykon remaining time kan zero w ana 3mlt interrupt (blocking) leha 2bl mhea t3mle interrupt(finishing)
+	  { printf( " id of processblocked %d \n",rprocessrid);
+            (*Ptimesptr).sender=0;                                                    //hna ana 5ls h3mlha block remaining time 2kbr mn zero w 23ml save ll7aga fe pcb w state
+		  PCB[rprocessrid-1].state=2;
+		  PCB[rprocessrid-1].remaining=(*Ptimesptr).remaining;
+		  PCB[rprocessrid-1].waitingtime=(*Ptimesptr).waiting;
+		  PCB[rprocessrid-1].execution=PCB[rprocessrid-1].runningtime-(*Ptimesptr).remaining;
+		  Hprocessonschedule=false;
+	  }  
+	else
+	{ //heaa kda kda htb3t signal interrupt finished h3ml hnak waiting l7d m7ot sender zero 34an mtb3t4 interrupt w ana 7atet sender b one		
+	 (*Ptimesptr).sender=0;
+	}	 
+	
+  }
+ if(!Hprocessonschedule&&!isEmpty(&headpq1))     // lma bdlt conditions zabt 2le bet8eer fe signal yt7t 2awl (Hprocessonschedule)                                                                                
+ {                                                                              //here send signal to processes to run b4of lw queueme4 fadya & w mfe4 7ad mst5dm scheduler
+	 Hprocessonschedule=true;                                    //b2ol 2n feh process schedule wa5dha
+	 rprocessfid=peek(&headpq1);                                // bgeeb 23la wa7da fe peek bta3 queue
+	 rprocessrid=peek(&headpq2);                                //if state =0 then first run state=2 yb2a blocked w hna ht3ml resume me4 htst5dmfesjf  
+	 kill(rprocessfid,SIGUSR1);
+	 if(PCB[rprocessrid-1].state==0)
+	 printf( " id of processrunning %d \n",rprocessrid);
+ else
+	 printf( " id of processresumed %d \n",rprocessrid);
+	 int shmepid=shmget(rprocessfid,14,IPC_CREAT | 0644);
+	 struct processtimes* Ptimesptr =(struct processtimes*)shmat(shmepid,(void*)0,0);  
+     while((*Ptimesptr).sender!=1);  //b3ml delay l7d mt2kd 2no 7t data
+	 PCB[rprocessrid-1].state=1;
+	 PCB[rprocessrid-1].waitingtime=(*Ptimesptr).waiting;
+	 PCB[rprocessrid-1].remaining=(*Ptimesptr).remaining;
+	 (*Ptimesptr).sender=0;         //brg3ha zero 2kd 2ne 2stlmt 34an check 2le b3de 
+ }		
+}
+	
+
+
+
+
+
+
+
+
+ 
+    //TODO: upon termination release the clock resources.
+   destroyClk(true);
+}
+
+
+
+
+
+
+
+
+
+
+//function used when process is finished send signal to scheduler
+
